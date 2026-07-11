@@ -1,0 +1,28 @@
+# Secrets — never commit real PPI credentials
+.env
+*.env
+!.env.example
+
+# Cached/derived data (regenerated from PPI/byma/data912, not source of truth)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

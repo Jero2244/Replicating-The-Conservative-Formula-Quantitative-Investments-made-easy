@@ -1,0 +1,66 @@
+ticker,name,panel,sector
+ALUA,Aluar Aluminio Argentino,lider,Materials
+BBAR,Banco BBVA Argentina,lider,Financials
+BMA,Banco Macro,lider,Financials
+BYMA,Bolsas y Mercados Argentinos,lider,Financials
+CEPU,Central Puerto,lider,Utilities
+COME,Sociedad Comercial del Plata,lider,Holding
+CRES,Cresud,lider,RealEstate
+CVH,Cablevision Holding,lider,Telecom
+EDN,Edenor,lider,Utilities
+GGAL,Grupo Financiero Galicia,lider,Financials
+LOMA,Loma Negra,lider,Materials
+MIRG,Mirgor,lider,Industrials
+PAMP,Pampa Energia,lider,Energy
+SUPV,Grupo Supervielle,lider,Financials
+TECO2,Telecom Argentina,lider,Telecom
+TGNO4,Transportadora de Gas del Norte,lider,Utilities
+TGSU2,Transportadora de Gas del Sur,lider,Utilities
+TRAN,Transener,lider,Utilities
+TXAR,Ternium Argentina,lider,Materials
+VALO,Grupo Financiero Valores,lider,Financials
+YPFD,YPF,lider,Energy
+AGRO,Agrometal,general,Industrials
+AUSO,Autopistas del Sol,general,Industrials
+BHIP,Banco Hipotecario,general,Financials
+BOLT,Boldt,general,ConsumerDiscretionary
+BPAT,Banco Patagonia,general,Financials
+CADO,Carlos Casado,general,RealEstate
+CAPX,Capex,general,Energy
+CARC,Carboclor,general,Materials
+CECO2,Central Costanera,general,Utilities
+CELU,Celulosa Argentina,general,Materials
+CGPA2,,general,
+CTIO,Consultatio,general,RealEstate
+DGCU2,Distribuidora de Gas Cuyana,general,Utilities
+DOME,,general,
+DYCA,,general,
+FERR,Ferrum,general,Industrials
+FIPL,,general,
+GAMI,,general,
+GARO,Garovaglio y Zorraquin,general,Holding
+GBAN,,general,
+GCDI,,general,
+GCLA,Grupo Clarin,general,Telecom
+GRIM,Grimoldi,general,ConsumerDiscretionary
+HARG,,general,
+HAVA,Havanna Holding,general,ConsumerStaples
+HSAT,,general,
+INTR,,general,
+INVJ,Inversora Juramento,general,ConsumerStaples
+IRSA,IRSA Inversiones y Representaciones,general,RealEstate
+LEDE,Ledesma,general,ConsumerStaples
+LONG,Longvie,general,ConsumerDiscretionary
+METR,Metrogas,general,Utilities
+MOLA,Molinos Agro,general,ConsumerStaples
+MOLI,Molinos Rio de la Plata,general,ConsumerStaples
+MORI,Morixe,general,ConsumerStaples
+MTR,,general,
+OEST,Oeste,general,Industrials
+PATA,Importadora y Exportadora de la Patagonia,general,ConsumerDiscretionary
+POLL,Polledo,general,ConsumerStaples
+RICH,Laboratorios Richmond,general,HealthCare
+RIGO,Rigolleau,general,Materials
+ROSE,,general,
+SAMI,,general,
+SEMI,Molinos Juan Semino,general,ConsumerStaples

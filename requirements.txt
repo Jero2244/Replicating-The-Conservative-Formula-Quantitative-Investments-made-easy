@@ -1,0 +1,7 @@
+ppi-client
+pandas
+numpy
+scipy
+python-dotenv
+matplotlib
+pytest

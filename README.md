@@ -44,6 +44,97 @@ tickers (inconsistent coverage/adjustments for Argentine names) or CNV's
 Whichever you use, drop it into `data/manual/dividends.csv` following
 `data/manual/dividends_template.csv`'s columns.
 
+## Universe
+
+The full investable universe is [`config/universe.csv`](config/universe.csv) —
+65 curated BYMA-listed common stocks (Panel Líder + Panel General), seeded
+from the local `data912` skill's static ticker catalog. `name`/`sector` are
+left blank (`—`) where not confidently known rather than guessed; edit the
+CSV directly to fill gaps or add/remove tickers.
+
+`MTR` and `DYCA` are listed but don't currently resolve via PPI's
+`SearchInstrument` (likely delisted/renamed) — `python -m src.data_sources.universe`
+flags any ticker that stops resolving, so it's worth re-running after editing
+the list.
+
+### Panel Líder (21 stocks)
+
+| Ticker | Name | Sector |
+|---|---|---|
+| ALUA | Aluar Aluminio Argentino | Materials |
+| BBAR | Banco BBVA Argentina | Financials |
+| BMA | Banco Macro | Financials |
+| BYMA | Bolsas y Mercados Argentinos | Financials |
+| CEPU | Central Puerto | Utilities |
+| COME | Sociedad Comercial del Plata | Holding |
+| CRES | Cresud | RealEstate |
+| CVH | Cablevision Holding | Telecom |
+| EDN | Edenor | Utilities |
+| GGAL | Grupo Financiero Galicia | Financials |
+| LOMA | Loma Negra | Materials |
+| MIRG | Mirgor | Industrials |
+| PAMP | Pampa Energia | Energy |
+| SUPV | Grupo Supervielle | Financials |
+| TECO2 | Telecom Argentina | Telecom |
+| TGNO4 | Transportadora de Gas del Norte | Utilities |
+| TGSU2 | Transportadora de Gas del Sur | Utilities |
+| TRAN | Transener | Utilities |
+| TXAR | Ternium Argentina | Materials |
+| VALO | Grupo Financiero Valores | Financials |
+| YPFD | YPF | Energy |
+
+<details>
+<summary><b>Panel General (44 stocks)</b> — click to expand</summary>
+
+| Ticker | Name | Sector |
+|---|---|---|
+| AGRO | Agrometal | Industrials |
+| AUSO | Autopistas del Sol | Industrials |
+| BHIP | Banco Hipotecario | Financials |
+| BOLT | Boldt | ConsumerDiscretionary |
+| BPAT | Banco Patagonia | Financials |
+| CADO | Carlos Casado | RealEstate |
+| CAPX | Capex | Energy |
+| CARC | Carboclor | Materials |
+| CECO2 | Central Costanera | Utilities |
+| CELU | Celulosa Argentina | Materials |
+| CGPA2 | — | — |
+| CTIO | Consultatio | RealEstate |
+| DGCU2 | Distribuidora de Gas Cuyana | Utilities |
+| DOME | — | — |
+| DYCA | — | — |
+| FERR | Ferrum | Industrials |
+| FIPL | — | — |
+| GAMI | — | — |
+| GARO | Garovaglio y Zorraquin | Holding |
+| GBAN | — | — |
+| GCDI | — | — |
+| GCLA | Grupo Clarin | Telecom |
+| GRIM | Grimoldi | ConsumerDiscretionary |
+| HARG | — | — |
+| HAVA | Havanna Holding | ConsumerStaples |
+| HSAT | — | — |
+| INTR | — | — |
+| INVJ | Inversora Juramento | ConsumerStaples |
+| IRSA | IRSA Inversiones y Representaciones | RealEstate |
+| LEDE | Ledesma | ConsumerStaples |
+| LONG | Longvie | ConsumerDiscretionary |
+| METR | Metrogas | Utilities |
+| MOLA | Molinos Agro | ConsumerStaples |
+| MOLI | Molinos Rio de la Plata | ConsumerStaples |
+| MORI | Morixe | ConsumerStaples |
+| MTR | — | — |
+| OEST | Oeste | Industrials |
+| PATA | Importadora y Exportadora de la Patagonia | ConsumerDiscretionary |
+| POLL | Polledo | ConsumerStaples |
+| RICH | Laboratorios Richmond | HealthCare |
+| RIGO | Rigolleau | Materials |
+| ROSE | — | — |
+| SAMI | — | — |
+| SEMI | Molinos Juan Semino | ConsumerStaples |
+
+</details>
+
 ## Results (2010–2026 backtest, 63 BYMA stocks)
 
 Live run against PPI, 2-factor (Low-Vol + Momentum) formula, quarterly

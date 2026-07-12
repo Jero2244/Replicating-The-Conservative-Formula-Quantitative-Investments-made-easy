@@ -44,6 +44,54 @@ tickers (inconsistent coverage/adjustments for Argentine names) or CNV's
 Whichever you use, drop it into `data/manual/dividends.csv` following
 `data/manual/dividends_template.csv`'s columns.
 
+## Results (2010–2026 backtest, 63 BYMA stocks)
+
+Live run against PPI, 2-factor (Low-Vol + Momentum) formula, quarterly
+rebalance. **Conservative** = low-vol half of the universe, top ~30% by
+12-1 month momentum. **Speculative** = high-vol half, worst momentum —
+the paper's long-short comparison portfolio, not something to actually hold.
+Full numbers in [`reports/performance_summary.csv`](reports/performance_summary.csv).
+
+### Nominal ARS (Jan 2011 – Jul 2026, 184 months)
+
+| Portfolio | CAGR | Ann. Vol | Sharpe | Max Drawdown | Total return |
+|---|---|---|---|---|---|
+| **Conservative** | 60.7% | 44.3% | 1.29 | -43.0% | ~1,444x |
+| Speculative | 30.1% | 50.4% | 0.75 | -60.4% | ~56x |
+| Merval (index, last ~2y only*) | 47.0% | 61.0% | 0.88 | -30.9% | ~2.2x |
+
+![Equity curve, ARS nominal](reports/equity_curve_ars.png)
+
+### USD-implied via CCL (Oct 2020 – Jul 2026, 70 months — as far back as the AL30/GD30 bond pairs go)
+
+| Portfolio | CAGR | Ann. Vol | Sharpe | Max Drawdown | Total return |
+|---|---|---|---|---|---|
+| **Conservative** | 39.4% | 40.5% | 1.01 | -49.1% | ~6.9x |
+| Speculative | 2.9% | 50.1% | 0.28 | -67.7% | ~1.2x |
+| Merval (index, last ~2y only*) | 35.4% | 64.5% | 0.73 | -46.2% | ~1.8x |
+
+![Equity curve, USD implied](reports/equity_curve_usd.png)
+
+**Takeaway:** directionally, the paper's core finding replicates — the
+low-vol/momentum sleeve beats its opposite by a wide margin, with a
+meaningfully smaller drawdown, in both nominal ARS and USD-implied terms.
+
+**Caveats before reading too much into this:**
+- NPY isn't in the ranking yet (see above) — this is testing 2 of the
+  paper's 3 factors.
+- *The Merval benchmark comes from BYMA's free public endpoint, which
+  silently caps history at ~2 years regardless of the requested range —
+  it's shown for the overlapping window only, not the full backtest.
+- USD-implied returns only go back to late 2020 because the AL30/GD30
+  dollar-linked bonds used for the CCL proxy didn't exist before that
+  year's debt restructuring.
+- 63 stocks (many illiquid "Panel General" small-caps) is a much thinner
+  and noisier universe than the paper's 1,000 large-cap US stocks — treat
+  this as a suggestive first look, not a robust replication.
+
+Regenerate these with `python -m src.backtest.run_backtest --start 2010-01-01`
+then `python -m src.backtest.report` (see below).
+
 ## Setup
 
 ```bash
@@ -86,6 +134,8 @@ Unit tests run on synthetic data only — no PPI credentials required.
 
 ```
 config/universe.csv           # curated Argentine stock universe (ticker, name, panel, sector)
+reports/                      # committed snapshot backing the Results section above
+  performance_summary.csv, equity_curve_ars.png, equity_curve_usd.png
 data/
   raw/                        # gitignored — cached PPI historical pulls
   processed/                  # gitignored — factor scores, returns, reports, plots

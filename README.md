@@ -5,6 +5,45 @@ holds on the Argentine equity market, using the
 [Portfolio Personal de Inversiones (PPI) API](https://itatppi.github.io/ppi-official-api-docs/)
 for market data.
 
+## Key findings
+
+1. **The low-risk effect replicates.** The Conservative portfolio beats its
+   Speculative opposite in both nominal ARS and USD-implied terms, with much
+   lower volatility and a far smaller drawdown — the paper's core result.
+2. **Adding Net Payout Yield (NPY) lowers returns in Argentina.** The paper
+   ranks on three factors; here, the version *without* NPY (Low-Vol +
+   Momentum) earns clearly more than the full formula *with* NPY:
+
+   | Conservative portfolio | ARS CAGR | ARS total return | USD CAGR | USD total return |
+   |---|---|---|---|---|
+   | **Without NPY** (2-factor) | **58.3%** | **~1,237x** | **34.0%** | **~5.8x** |
+   | With NPY (3-factor, as in the paper) | 47.8% | ~426x | 25.8% | ~4.0x |
+   | Difference from adding NPY | **-10.5 pp / yr** | ~2.9x less | **-8.2 pp / yr** | ~1.5x less |
+
+   *ARS: Apr 2011 – Sep 2026 (186 months). USD: Oct 2020 – Sep 2026 (72 months).*
+
+   NPY also lowers the Sharpe ratio (ARS 1.26 → 1.18, USD 0.91 → 0.79). It
+   does cut volatility a bit (ARS 44.3% → 40.1%), but not by enough to make
+   up for the lost return.
+3. **Only the version without NPY beats the market.** Over the same months,
+   the Merval returned 54.2% a year in ARS (Sharpe 1.15). Without NPY the
+   formula beats it (58.3%, Sharpe 1.26); with NPY it falls behind (47.8%),
+   matching it only on a risk-adjusted basis (Sharpe 1.18). In USD terms
+   neither version beats the Merval's 34.8% over 2020–2026, though the
+   version without NPY comes close (34.0%) with lower volatility.
+4. **Why: dividends weren't rewarded in Argentina.** Tested on its own, NPY
+   has no premium here. Stocks that paid no dividend returned 14.6% per
+   quarter on average, versus 12.8% for the highest-yielding payers, which
+   won in only 46% of quarters. Payers fell furthest behind in 2011–15 and
+   2020–23, the capital-control and high-inflation years when the central
+   bank (BCRA) restricted dividends. High payers did lead in 2016–19 and
+   2024–26.
+
+Caveats: this NPY is dividends only (no buyback data), the universe is just
+64 stocks with portfolios of ~8–10 names, and USD figures only cover
+2020–2026. Details are in [Results](#results-20112026-backtest-64-byma-stocks)
+and [Net Payout Yield](#net-payout-yield-npy).
+
 ## What the paper says
 
 Select the top 100 of the largest 1,000 US stocks based on: low 3-year return

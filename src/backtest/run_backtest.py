@@ -1,14 +1,19 @@
 """End-to-end pipeline: pull PPI history for the universe, build the
-Conservative/Speculative portfolios (Low-Vol + Momentum + NPY, or Low-Vol +
-Momentum if data/manual/dividends.csv is missing), and convert the resulting
-ARS return series to USD-implied returns via the bond-pair FX proxy.
+Conservative/Speculative portfolios, and convert the resulting ARS return
+series to USD-implied returns via the implied CCL rate (src/data_sources/fx.py).
+
+With data/manual/dividends.csv present, both versions are built: the full
+3-factor formula (Low-Vol + Momentum + NPY; columns `conservative_*`,
+`speculative_*`) and the 2-factor one without NPY (`*_no_npy_*`), so the
+effect of NPY can be compared directly. Without it, only the 2-factor
+version is built, under the plain `conservative_*` / `speculative_*` names.
 
 Usage:
     python -m src.backtest.run_backtest --start 2010-01-01 --end 2026-07-01
 
 Writes:
     data/processed/portfolio_returns.csv   (date, conservative, speculative, merval — ARS & USD)
-    data/processed/holdings.json           (rebalance date -> selected tickers, for inspection)
+    data/processed/holdings.json           (rebalance date -> selected tickers per portfolio, for inspection)
 """
 from __future__ import annotations
 
@@ -20,7 +25,7 @@ import pandas as pd
 
 from src import config
 from src.data_sources.benchmark import fetch_merval_index
-from src.data_sources.fx import implied_fx_series
+from src.data_sources.fx import ccl_series
 from src.data_sources.ppi_client import PPIClient
 from src.data_sources.universe import load_universe
 from src.formula.factors import (
@@ -68,9 +73,15 @@ def run(date_from, date_to) -> pd.DataFrame:
         print("  ranking on momentum + NPY (3-factor version).")
 
     returns_ars, holdings = build_portfolio_returns(monthly_prices, vol_df, mom_df, npy_df)
+    if npy_df is not None:
+        print("  also building the 2-factor version (no NPY) for comparison.")
+        returns_no_npy, holdings_no_npy = build_portfolio_returns(monthly_prices, vol_df, mom_df)
+        returns_ars = pd.concat([returns_ars, returns_no_npy.add_suffix("_no_npy")], axis=1)
+        for dt, picks in holdings_no_npy.items():
+            holdings.setdefault(dt, {}).update({f"{k}_no_npy": v for k, v in picks.items()})
 
-    print("Building implied CCL/MEP FX series from bond pairs...")
-    fx_series = implied_fx_series(client, date_from, date_to)
+    print("Building implied CCL series (bond pairs, extended back with ADR pairs)...")
+    fx_series = ccl_series(client, date_from, date_to)
     monthly_fx = fx_series.resample("ME").last().reindex(returns_ars.index, method="ffill")
     fx_returns = monthly_fx.pct_change(fill_method=None)
 

@@ -7,42 +7,48 @@ for market data.
 
 ## Key findings
 
-1. **The low-risk effect replicates.** The Conservative portfolio beats its
-   Speculative opposite in both nominal ARS and USD-implied terms, with much
-   lower volatility and a far smaller drawdown — the paper's core result.
-2. **Adding Net Payout Yield (NPY) lowers returns in Argentina.** The paper
+All figures: Apr 2011 – Sep 2026 (186 months), in nominal ARS and in USD at
+the implied CCL rate.
+
+1. **Adding Net Payout Yield (NPY) lowers returns in Argentina.** The paper
    ranks on three factors; here, the version *without* NPY (Low-Vol +
-   Momentum) earns clearly more than the full formula *with* NPY:
+   Momentum) earns clearly more than the full formula *with* NPY, in both
+   currencies:
 
    | Conservative portfolio | ARS CAGR | ARS total return | USD CAGR | USD total return |
    |---|---|---|---|---|
-   | **Without NPY** (2-factor) | **58.3%** | **~1,237x** | **34.0%** | **~5.8x** |
-   | With NPY (3-factor, as in the paper) | 47.8% | ~426x | 25.8% | ~4.0x |
-   | Difference from adding NPY | **-10.5 pp / yr** | ~2.9x less | **-8.2 pp / yr** | ~1.5x less |
+   | **Without NPY** (2-factor) | **58.3%** | **~1,237x** | **7.7%** | **~3.2x** |
+   | With NPY (3-factor, as in the paper) | 47.8% | ~426x | 0.5% | ~1.09x |
+   | Difference from adding NPY | **-10.5 pp / yr** | ~2.9x less | **-7.2 pp / yr** | ~2.9x less |
 
-   *ARS: Apr 2011 – Sep 2026 (186 months). USD: Oct 2020 – Sep 2026 (72 months).*
+   NPY also lowers the Sharpe ratio (ARS 1.26 → 1.18, USD 0.39 → 0.22). It
+   does cut volatility a little (ARS 44.3% → 40.1%, USD 43.5% → 39.9%), but
+   not by enough to make up for the lost return.
+2. **Only the version without NPY beats the market.** The Merval returned
+   54.2% a year in ARS (Sharpe 1.15) and 4.9% in USD (Sharpe 0.34, ~2.1x).
+   Without NPY the formula beats it in both (58.3% / 7.7%, Sharpe 1.26 /
+   0.39); with NPY it falls behind in both (47.8% / 0.5%). In the charts
+   below, that's the dashed blue line (without NPY) running above the green
+   Merval line, and the solid blue one (with NPY) below it.
+3. **The low-risk effect replicates, with a limit.** Conservative beats its
+   Speculative opposite in both currencies and in both versions, with lower
+   volatility. In ARS its worst drawdown is much smaller (-43% vs -58%). But
+   in USD every portfolio, the Merval included, lost ~85% in the 2018–2020
+   crisis: low volatility didn't protect against a collapse of the currency
+   itself.
+4. **Why NPY hurts: dividends weren't rewarded in Argentina.** Tested on its
+   own, NPY has no premium here. Stocks that paid no dividend returned
+   14.6% per quarter on average, versus 12.8% for the highest-yielding
+   payers, which won in only 46% of quarters. Payers fell furthest behind in
+   2011–15 and 2020–23, the capital-control and high-inflation years when
+   the central bank (BCRA) restricted dividends. High payers did lead in
+   2016–19 and 2024–26.
 
-   NPY also lowers the Sharpe ratio (ARS 1.26 → 1.18, USD 0.91 → 0.79). It
-   does cut volatility a bit (ARS 44.3% → 40.1%), but not by enough to make
-   up for the lost return.
-3. **Only the version without NPY beats the market.** Over the same months,
-   the Merval returned 54.2% a year in ARS (Sharpe 1.15). Without NPY the
-   formula beats it (58.3%, Sharpe 1.26); with NPY it falls behind (47.8%),
-   matching it only on a risk-adjusted basis (Sharpe 1.18). In USD terms
-   neither version beats the Merval's 34.8% over 2020–2026, though the
-   version without NPY comes close (34.0%) with lower volatility.
-4. **Why: dividends weren't rewarded in Argentina.** Tested on its own, NPY
-   has no premium here. Stocks that paid no dividend returned 14.6% per
-   quarter on average, versus 12.8% for the highest-yielding payers, which
-   won in only 46% of quarters. Payers fell furthest behind in 2011–15 and
-   2020–23, the capital-control and high-inflation years when the central
-   bank (BCRA) restricted dividends. High payers did lead in 2016–19 and
-   2024–26.
-
-Caveats: this NPY is dividends only (no buyback data), the universe is just
-64 stocks with portfolios of ~8–10 names, and USD figures only cover
-2020–2026. Details are in [Results](#results-20112026-backtest-64-byma-stocks)
-and [Net Payout Yield](#net-payout-yield-npy).
+Caveats: this NPY is dividends only (no buyback data); the universe is just
+64 stocks with portfolios of ~8–10 names; and before Sep 2020 the USD
+figures use an ADR-implied exchange rate (see below). Details are in
+[Results](#results-20112026-backtest-64-byma-stocks) and
+[Net Payout Yield](#net-payout-yield-npy).
 
 ## What the paper says
 
@@ -63,9 +69,14 @@ PPI's API is missing three things the original methodology needs:
   from Yahoo Finance instead (see [Net Payout Yield](#net-payout-yield-npy)
   below), and the buyback half of NPY is left out for lack of a
   shares-outstanding history.
-- **No historical FX endpoint** — implied ARS/USD (CCL) rates are derived
-  from ARS-vs-USD-settled bond pairs (`AL30`/`AL30D`, `GD30`/`GD30D`) rather
-  than a dedicated FX series. Results are reported in both nominal ARS and
+- **No historical FX endpoint** — the ARS/USD (CCL) rate is implied from
+  securities that trade in both currencies. From Sep 2020 it comes from
+  ARS-vs-USD-settled bond pairs (`AL30`/`AL30D`, `GD30`/`GD30D`). Those bonds
+  didn't exist before the 2020 restructuring, so earlier months use the
+  ADR-implied rate: Buenos Aires price × shares per ADR ÷ New York ADR price
+  for GGAL, PAM and BMA (median, from Yahoo Finance), rescaled to meet the
+  bond rate. The ADR rate runs ~3% above the bond rate where both exist and
+  their monthly changes correlate at ~0.95. Results are reported in both nominal ARS and
   USD-implied terms, since Argentina's inflation/devaluation history makes
   nominal ARS returns hard to compare with the paper's US/Europe/Japan/EM
   figures (all reported in USD).
@@ -101,8 +112,9 @@ high-vol half. This project implements it as:
   be corrected or added by hand with `source = manual`; re-fetching keeps
   them.
 
-Delete or rename `data/manual/dividends.csv` to get the 2-factor
-(Low-Vol + Momentum) version back.
+When `data/manual/dividends.csv` exists, the backtest builds both versions
+(with and without NPY) so they can be compared; without it, only the
+2-factor (Low-Vol + Momentum) version is built.
 
 ## Universe
 
@@ -203,62 +215,50 @@ Known cases:
 
 ## Results (2011–2026 backtest, 64 BYMA stocks)
 
-Live run against PPI (data to 2026-09-30), full 3-factor formula (Low-Vol +
-Momentum + NPY), quarterly rebalance. **Conservative** = low-vol half of the
-universe, best ~30% by averaged momentum/NPY rank. **Speculative** =
-high-vol half, worst ~30% — the paper's long-short comparison portfolio, not
-something to actually hold. The Merval is measured over the same months as
-the portfolios. Full numbers in
+Live run against PPI (data to 2026-09-30), quarterly rebalance. Both
+versions are shown: the full formula **with NPY** (Low-Vol + Momentum + NPY,
+as in the paper) and the 2-factor version **without NPY** (Low-Vol +
+Momentum). **Conservative** = low-vol half of the universe, best ~30% by
+momentum (averaged with NPY rank, in the with-NPY version). **Speculative**
+= high-vol half, worst ~30% — the paper's long-short comparison portfolio,
+not something to actually hold. The Merval is measured over the same
+months. Full numbers in
 [`reports/performance_summary.csv`](reports/performance_summary.csv).
 
 ### Nominal ARS (Apr 2011 – Sep 2026, 186 months)
 
 | Portfolio | CAGR | Ann. Vol | Sharpe | Max Drawdown | Total return |
 |---|---|---|---|---|---|
-| **Conservative** | 47.8% | 40.1% | 1.18 | -43.0% | ~426x |
-| Speculative | 39.9% | 55.0% | 0.86 | -58.3% | ~182x |
+| **Conservative, without NPY** | **58.3%** | 44.3% | **1.26** | -43.0% | ~1,237x |
+| Conservative, with NPY | 47.8% | 40.1% | 1.18 | -43.0% | ~426x |
+| Speculative, without NPY | 28.8% | 50.3% | 0.73 | -60.4% | ~50x |
+| Speculative, with NPY | 39.9% | 55.0% | 0.86 | -58.3% | ~182x |
 | Merval | 54.2% | 47.2% | 1.15 | -42.0% | ~821x |
 
 ![Equity curve, ARS nominal](reports/equity_curve_ars.png)
 
-### USD-implied via CCL (Oct 2020 – Sep 2026, 72 months — as far back as the AL30/GD30 bond pairs go)
+### USD-implied via CCL (Apr 2011 – Sep 2026, 186 months)
 
 | Portfolio | CAGR | Ann. Vol | Sharpe | Max Drawdown | Total return |
 |---|---|---|---|---|---|
-| **Conservative** | 25.8% | 37.5% | 0.79 | -43.2% | ~4.0x |
-| Speculative | 11.4% | 56.2% | 0.43 | -67.0% | ~1.9x |
-| Merval | 34.8% | 49.8% | 0.82 | -46.3% | ~6.0x |
+| **Conservative, without NPY** | **7.7%** | 43.5% | **0.39** | -85.3% | ~3.2x |
+| Conservative, with NPY | 0.5% | 39.9% | 0.22 | -85.6% | ~1.09x |
+| Speculative, without NPY | -12.4% | 47.1% | -0.04 | -93.0% | ~0.13x |
+| Speculative, with NPY | -4.8% | 51.5% | 0.15 | -91.5% | ~0.47x |
+| Merval | 4.9% | 46.8% | 0.34 | -84.5% | ~2.1x |
 
 ![Equity curve, USD implied](reports/equity_curve_usd.png)
 
-### Effect of adding NPY (same data and window)
-
-| Portfolio | ARS CAGR | ARS Sharpe | USD CAGR | USD Sharpe |
-|---|---|---|---|---|
-| Conservative, 2-factor (Low-Vol + Momentum) | 58.3% | 1.26 | 34.0% | 0.91 |
-| Conservative, 3-factor (+ NPY) | 47.8% | 1.18 | 25.8% | 0.79 |
-| Speculative, 2-factor | 28.8% | 0.73 | 0.5% | 0.23 |
-| Speculative, 3-factor | 39.9% | 0.86 | 11.4% | 0.43 |
-
-**Takeaway:** the paper's core risk finding replicates — Conservative beats
-Speculative in both currencies, with much lower volatility and a far
-smaller drawdown. But **adding NPY makes the formula worse in Argentina**:
-the 2-factor version beats the Merval (58.3% vs 54.2% ARS CAGR, Sharpe 1.26
-vs 1.15), while the full 3-factor version trails it on return and only
-matches it on risk-adjusted terms. On its own, NPY had no premium here:
-non-dividend-payers returned more on average (14.6% vs 12.8% per quarter
-for the top-yield half of payers, which won only 46% of quarters), with
-payers falling behind most in 2011–15 and 2020–23 — the capital-control,
-high-inflation years when BCRA restricted dividends and retained earnings
-arguably mattered more than payouts. High payers did lead in 2016–19 and
-2024–26.
+Solid lines are the with-NPY versions, dashed lines the without-NPY ones.
+See [Key findings](#key-findings) for what these numbers say.
 
 **Caveats before reading too much into this:**
 - NPY here is dividend yield only (no buyback data, see above), from Yahoo
   data that needed cleaning — a noisier signal than the paper's.
-- USD-implied returns only go back to late 2020 because the AL30/GD30
-  dollar-linked bonds used for the CCL proxy didn't exist before that
-  year's debt restructuring.
+- Before Sep 2020 the USD figures rest on the ADR-implied CCL rather than
+  the bond-implied one (see above). Over just Oct 2020 – Sep 2026, where
+  the bond rate exists, the version without NPY slightly trailed the Merval
+  in USD (34.0% vs 34.8% a year); its USD edge comes from the earlier years.
 - 64 stocks (many illiquid "Panel General" small-caps) is a much thinner
   and noisier universe than the paper's 1,000 large-cap US stocks, and the
   portfolios hold only ~8–10 names — treat this as a suggestive first look,
@@ -325,7 +325,7 @@ src/
   data_sources/
     ppi_client.py             # PPI SDK wrapper (auth, historical search, caching)
     universe.py                # loads + validates config/universe.csv against PPI
-    fx.py                      # implied ARS/USD from dollar-linked bond pairs
+    fx.py                      # implied CCL: bond pairs, extended back with ADR pairs
     benchmark.py                # S&P Merval index history (Yahoo ^MERV, BYMA fallback)
     dividends.py                # cash dividend history (Yahoo .BA) -> data/manual/dividends.csv
   formula/

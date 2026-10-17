@@ -59,3 +59,13 @@ FX_BOND_PAIRS = [
     ("AL30", "AL30D"),
     ("GD30", "GD30D"),
 ]
+
+# ADR pairs used to extend the implied CCL back before the AL30/GD30 bonds
+# existed (Sep 2020): (BYMA ticker, US ADR ticker, local shares per ADR).
+# YPF is left out: Yahoo rescales YPFD.BA's whole history for a 2026 split,
+# so its local/ADR ratio is off by 10x.
+FX_ADR_PAIRS = [
+    ("GGAL", "GGAL", 10),
+    ("PAMP", "PAM", 25),
+    ("BMA", "BMA", 10),
+]

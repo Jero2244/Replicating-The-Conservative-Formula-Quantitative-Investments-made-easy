@@ -43,12 +43,28 @@ def build_report(returns_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).T
 
 
+_LINE_COLORS = {"conservative": "tab:blue", "speculative": "tab:orange", "merval": "tab:green"}
+
+
+def _line_style(col: str, has_no_npy: bool) -> dict:
+    """Legend label and line style for a `<portfolio>[_no_npy]_<ccy>` column.
+    When both versions are present, the no-NPY one is dashed in the same color."""
+    base = col.rsplit("_", 1)[0]  # drop currency suffix
+    no_npy = base.endswith("_no_npy")
+    name = base.removesuffix("_no_npy")
+    label = "Merval" if name == "merval" else name.capitalize()
+    if name != "merval" and has_no_npy:
+        label += " (without NPY)" if no_npy else " (with NPY)"
+    return {"label": label, "color": _LINE_COLORS.get(name), "linestyle": "--" if no_npy else "-"}
+
+
 def plot_equity_curves(returns_df: pd.DataFrame, columns: list[str], title: str, out_path: Path):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(10, 6))
+    has_no_npy = any("_no_npy" in c for c in columns)
     for col in columns:
         if col not in returns_df.columns:
             continue
@@ -56,7 +72,7 @@ def plot_equity_curves(returns_df: pd.DataFrame, columns: list[str], title: str,
         if r.empty:
             continue
         wealth = (1 + r).cumprod()
-        ax.plot(wealth.index, wealth.values, label=col)
+        ax.plot(wealth.index, wealth.values, **_line_style(col, has_no_npy))
 
     ax.set_title(title)
     ax.set_ylabel("Wealth index (start = 1.0)")

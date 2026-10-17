@@ -24,7 +24,8 @@ DATA_DIR = PROJECT_ROOT / "data"
 DATA_RAW = DATA_DIR / "raw"
 DATA_PROCESSED = DATA_DIR / "processed"
 DATA_MANUAL = DATA_DIR / "manual"
-DIVIDENDS_CSV = DATA_MANUAL / "dividends.csv"  # user-provided, not committed until it exists
+DIVIDENDS_CSV = DATA_MANUAL / "dividends.csv"  # built by `python -m src.data_sources.dividends`
+SHARES_OUTSTANDING_CSV = DATA_MANUAL / "shares_outstanding.csv"  # optional, for buyback yield
 
 for _dir in (DATA_RAW, DATA_PROCESSED, DATA_MANUAL):
     _dir.mkdir(parents=True, exist_ok=True)
@@ -34,6 +35,12 @@ VOL_WINDOW_MONTHS = 36          # trailing volatility window (paper: 3-year)
 MOMENTUM_LOOKBACK_MONTHS = 12   # 12-1 month momentum
 MOMENTUM_SKIP_MONTHS = 1
 REBALANCE_FREQ = "Q"            # quarterly, same as the paper
+
+NPY_DIVIDEND_WINDOW_MONTHS = 12 # trailing dividend yield window
+NPY_SHARES_WINDOW_MONTHS = 24   # buyback yield: latest shares vs 24-month average (paper)
+MAX_EVENT_DIVIDEND_YIELD = 0.25 # single dividends above this fraction of the prior close
+                                 # are treated as Yahoo data errors and dropped (stale prices,
+                                 # unadjusted amounts — e.g. HAVA 2024 at ~30x the price)
 
 LOW_VOL_PCT = 0.50              # bottom half by volatility is the eligible pool
 TOP_PCT = 0.30                  # fraction of the low-vol pool selected as "Conservative"

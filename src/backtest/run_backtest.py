@@ -1,6 +1,7 @@
-"""End-to-end pipeline: pull PPI history for the universe, build the 2-factor
-(Low-Vol + Momentum) Conservative/Speculative portfolios, and convert the
-resulting ARS return series to USD-implied returns via the bond-pair FX proxy.
+"""End-to-end pipeline: pull PPI history for the universe, build the
+Conservative/Speculative portfolios (Low-Vol + Momentum + NPY, or Low-Vol +
+Momentum if data/manual/dividends.csv is missing), and convert the resulting
+ARS return series to USD-implied returns via the bond-pair FX proxy.
 
 Usage:
     python -m src.backtest.run_backtest --start 2010-01-01 --end 2026-07-01
@@ -22,7 +23,14 @@ from src.data_sources.benchmark import fetch_merval_index
 from src.data_sources.fx import implied_fx_series
 from src.data_sources.ppi_client import PPIClient
 from src.data_sources.universe import load_universe
-from src.formula.factors import build_price_panel, momentum_12_1, trailing_volatility
+from src.formula.factors import (
+    build_price_panel,
+    load_dividends,
+    load_shares_outstanding,
+    momentum_12_1,
+    net_payout_yield,
+    trailing_volatility,
+)
 from src.formula.portfolio import build_portfolio_returns
 
 
@@ -53,7 +61,13 @@ def run(date_from, date_to) -> pd.DataFrame:
     vol_df = trailing_volatility(monthly_prices)
     mom_df = momentum_12_1(monthly_prices)
 
-    returns_ars, holdings = build_portfolio_returns(monthly_prices, vol_df, mom_df)
+    npy_df = net_payout_yield(monthly_prices, load_dividends(), load_shares_outstanding())
+    if npy_df is None:
+        print(f"  {config.DIVIDENDS_CSV} not found — ranking on momentum only (2-factor version).")
+    else:
+        print("  ranking on momentum + NPY (3-factor version).")
+
+    returns_ars, holdings = build_portfolio_returns(monthly_prices, vol_df, mom_df, npy_df)
 
     print("Building implied CCL/MEP FX series from bond pairs...")
     fx_series = implied_fx_series(client, date_from, date_to)

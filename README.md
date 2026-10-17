@@ -15,16 +15,15 @@ US, Europe, Japan, and Emerging Markets.
 
 ## What this project does differently, and why
 
-PPI's API does not expose two things the original methodology needs:
+PPI's API is missing three things the original methodology needs:
 
 - **No bulk instrument-listing endpoint** — only search-by-ticker. So the
   Argentine universe (`config/universe.csv`, ~65 BYMA-listed common stocks —
   Panel Líder + Panel General) is a curated static list, not pulled live.
-- **No dividends/buybacks/corporate-actions endpoint** — so **Net Payout
-  Yield is dropped for now**. This is a **2-factor "Low-Vol + Momentum"**
-  version of the formula. `src/formula/factors.py::compute_npy` is a stub
-  ready to wire in a dividends CSV once one exists — nothing else needs to
-  change when it does.
+- **No dividends/buybacks/corporate-actions endpoint** — so dividends come
+  from Yahoo Finance instead (see [Net Payout Yield](#net-payout-yield-npy)
+  below), and the buyback half of NPY is left out for lack of a
+  shares-outstanding history.
 - **No historical FX endpoint** — implied ARS/USD (CCL) rates are derived
   from ARS-vs-USD-settled bond pairs (`AL30`/`AL30D`, `GD30`/`GD30D`) rather
   than a dedicated FX series. Results are reported in both nominal ARS and
@@ -32,17 +31,39 @@ PPI's API does not expose two things the original methodology needs:
   nominal ARS returns hard to compare with the paper's US/Europe/Japan/EM
   figures (all reported in USD).
 
-On dividend data (for a future 3-factor version): Argentine stocks pay
-low/lumpy dividends historically — BCRA profit-repatriation and dividend
-restrictions during capital-control periods caused many companies to skip
-payouts for years — so NPY may matter less here than in the US sample, but
-it's still worth adding. Refinitiv/Eikon (if you have access) is the
-closest match to the paper's Factset-grade data (full dividend + shares-
-outstanding history). Lighter free alternatives: Yahoo Finance `.BA`
-tickers (inconsistent coverage/adjustments for Argentine names) or CNV's
-"Hechos Relevantes" corporate-action filings as a primary-source fallback.
-Whichever you use, drop it into `data/manual/dividends.csv` following
-`data/manual/dividends_template.csv`'s columns.
+## Net Payout Yield (NPY)
+
+The paper's NPY is dividend yield + net buyback yield (latest shares
+outstanding vs. their 24-month average). Within each volatility half, a
+stock's momentum rank and NPY rank are averaged; Conservative takes the best
+combined score from the low-vol half, Speculative the worst from the
+high-vol half. This project implements it as:
+
+- **Dividend yield** — trailing 12-month cash dividends from Yahoo Finance
+  (`<TICKER>.BA`), stored in [`data/manual/dividends.csv`](data/manual/dividends.csv)
+  (rebuild with `python -m src.data_sources.dividends`). Each dividend is
+  divided by Yahoo's close the day before its ex-date and the 12 months of
+  per-event yields are summed — so every payout is measured against the
+  price when it was paid, which matters under Argentine inflation, and
+  Yahoo's dividends are never mixed with PPI's differently-adjusted prices.
+- **Data cleaning** — any single dividend above 25% of the prior close is
+  treated as a Yahoo data error and dropped (`MAX_EVENT_DIVIDEND_YIELD` in
+  `src/config.py`). That catches stale prices and unadjusted amounts like
+  HAVA's 2024 "dividend" at ~30x the share price; 25 of ~810 events are
+  dropped. Stock dividends ("dividendos en acciones", which Yahoo reports as
+  splits) aren't cash payouts and are ignored, as in the paper.
+- **Buyback yield** — not included: Yahoo only has the last few years of
+  share counts. If you source a split-adjusted history, put it in
+  `data/manual/shares_outstanding.csv` (`ticker,date,shares_outstanding`)
+  and it's added to NPY automatically.
+- **Coverage** — stocks with no Yahoo dividend records count as
+  zero-yield. Roughly 40–50% of the universe pays a dividend in a typical
+  year, dipping to 20–30% in 2020–21 (BCRA dividend restrictions). Rows can
+  be corrected or added by hand with `source = manual`; re-fetching keeps
+  them.
+
+Delete or rename `data/manual/dividends.csv` to get the 2-factor
+(Low-Vol + Momentum) version back.
 
 ## Universe
 
@@ -57,8 +78,8 @@ via PPI's `SearchInstrument`, so it's worth re-running after editing the list.
 Known cases:
 
 - `MTR` (Matba Rofex) merged with MAE and has traded as **`A3`** (A3 Mercados)
-  since 2025-03-05; the list now uses `A3`. Its price history only starts at
-  the merger, so it's ineligible until it has 12+ months of data.
+  since 2025-03-05; the list now uses `A3`. PPI carries the old MTR price
+  history under `A3`, back to 2020-09.
 - `DYCA` (Dycasa) is still on BYMA's Panel General list but didn't resolve
   via PPI on the last check; the backtest just skips it if it returns no data.
 - `HSAT`'s company couldn't be confirmed, so its name/sector stay blank.
@@ -141,55 +162,72 @@ Known cases:
 
 </details>
 
-## Results (2010–2026 backtest, 63 BYMA stocks)
+## Results (2011–2026 backtest, 64 BYMA stocks)
 
-Live run against PPI, 2-factor (Low-Vol + Momentum) formula, quarterly
-rebalance. **Conservative** = low-vol half of the universe, top ~30% by
-12-1 month momentum. **Speculative** = high-vol half, worst momentum —
-the paper's long-short comparison portfolio, not something to actually hold.
-Full numbers in [`reports/performance_summary.csv`](reports/performance_summary.csv).
+Live run against PPI (data to 2026-09-30), full 3-factor formula (Low-Vol +
+Momentum + NPY), quarterly rebalance. **Conservative** = low-vol half of the
+universe, best ~30% by averaged momentum/NPY rank. **Speculative** =
+high-vol half, worst ~30% — the paper's long-short comparison portfolio, not
+something to actually hold. The Merval is measured over the same months as
+the portfolios. Full numbers in
+[`reports/performance_summary.csv`](reports/performance_summary.csv).
 
-### Nominal ARS (Jan 2011 – Jul 2026, 184 months)
+### Nominal ARS (Apr 2011 – Sep 2026, 186 months)
 
 | Portfolio | CAGR | Ann. Vol | Sharpe | Max Drawdown | Total return |
 |---|---|---|---|---|---|
-| **Conservative** | 60.7% | 44.3% | 1.29 | -43.0% | ~1,444x |
-| Speculative | 30.1% | 50.4% | 0.75 | -60.4% | ~56x |
-| Merval (index, last ~2y only*) | 47.0% | 61.0% | 0.88 | -30.9% | ~2.2x |
+| **Conservative** | 47.8% | 40.1% | 1.18 | -43.0% | ~426x |
+| Speculative | 39.9% | 55.0% | 0.86 | -58.3% | ~182x |
+| Merval | 54.2% | 47.2% | 1.15 | -42.0% | ~821x |
 
 ![Equity curve, ARS nominal](reports/equity_curve_ars.png)
 
-### USD-implied via CCL (Oct 2020 – Jul 2026, 70 months — as far back as the AL30/GD30 bond pairs go)
+### USD-implied via CCL (Oct 2020 – Sep 2026, 72 months — as far back as the AL30/GD30 bond pairs go)
 
 | Portfolio | CAGR | Ann. Vol | Sharpe | Max Drawdown | Total return |
 |---|---|---|---|---|---|
-| **Conservative** | 39.4% | 40.5% | 1.01 | -49.1% | ~6.9x |
-| Speculative | 2.9% | 50.1% | 0.28 | -67.7% | ~1.2x |
-| Merval (index, last ~2y only*) | 35.4% | 64.5% | 0.73 | -46.2% | ~1.8x |
+| **Conservative** | 25.8% | 37.5% | 0.79 | -43.2% | ~4.0x |
+| Speculative | 11.4% | 56.2% | 0.43 | -67.0% | ~1.9x |
+| Merval | 34.8% | 49.8% | 0.82 | -46.3% | ~6.0x |
 
 ![Equity curve, USD implied](reports/equity_curve_usd.png)
 
-**Takeaway:** directionally, the paper's core finding replicates — the
-low-vol/momentum sleeve beats its opposite by a wide margin, with a
-meaningfully smaller drawdown, in both nominal ARS and USD-implied terms.
+### Effect of adding NPY (same data and window)
+
+| Portfolio | ARS CAGR | ARS Sharpe | USD CAGR | USD Sharpe |
+|---|---|---|---|---|
+| Conservative, 2-factor (Low-Vol + Momentum) | 58.3% | 1.26 | 34.0% | 0.91 |
+| Conservative, 3-factor (+ NPY) | 47.8% | 1.18 | 25.8% | 0.79 |
+| Speculative, 2-factor | 28.8% | 0.73 | 0.5% | 0.23 |
+| Speculative, 3-factor | 39.9% | 0.86 | 11.4% | 0.43 |
+
+**Takeaway:** the paper's core risk finding replicates — Conservative beats
+Speculative in both currencies, with much lower volatility and a far
+smaller drawdown. But **adding NPY makes the formula worse in Argentina**:
+the 2-factor version beats the Merval (58.3% vs 54.2% ARS CAGR, Sharpe 1.26
+vs 1.15), while the full 3-factor version trails it on return and only
+matches it on risk-adjusted terms. On its own, NPY had no premium here:
+non-dividend-payers returned more on average (14.6% vs 12.8% per quarter
+for the top-yield half of payers, which won only 46% of quarters), with
+payers falling behind most in 2011–15 and 2020–23 — the capital-control,
+high-inflation years when BCRA restricted dividends and retained earnings
+arguably mattered more than payouts. High payers did lead in 2016–19 and
+2024–26.
 
 **Caveats before reading too much into this:**
-- NPY isn't in the ranking yet (see above) — this is testing 2 of the
-  paper's 3 factors.
-- *The Merval rows above are from an older run, when the benchmark came
-  from BYMA's free endpoint, which silently caps history at ~2 years. The
-  benchmark now comes from Yahoo Finance (`^MERV`, full history; it matches
-  BYMA's closes over the 2 years where both have data), so re-running the
-  pipeline will produce full-period Merval figures.
+- NPY here is dividend yield only (no buyback data, see above), from Yahoo
+  data that needed cleaning — a noisier signal than the paper's.
 - USD-implied returns only go back to late 2020 because the AL30/GD30
   dollar-linked bonds used for the CCL proxy didn't exist before that
   year's debt restructuring.
-- 63 stocks (many illiquid "Panel General" small-caps) is a much thinner
-  and noisier universe than the paper's 1,000 large-cap US stocks — treat
-  this as a suggestive first look, not a robust replication.
+- 64 stocks (many illiquid "Panel General" small-caps) is a much thinner
+  and noisier universe than the paper's 1,000 large-cap US stocks, and the
+  portfolios hold only ~8–10 names — treat this as a suggestive first look,
+  not a robust replication.
 
-Regenerate these with `python -m src.backtest.run_backtest --start 2010-01-01`
-then `python -m src.backtest.report` (see below).
+Regenerate these with `python -m src.backtest.run_backtest --start 2010-01-01 --end 2026-09-30`
+then `python -m src.backtest.report` (see below), and copy the outputs from
+`data/processed/` into `reports/`.
 
 ## Setup
 
@@ -208,11 +246,14 @@ cp .env.example .env
 # 1. Sanity-check the universe resolves against PPI
 python -m src.data_sources.universe
 
-# 2. Pull history, build the Conservative/Speculative portfolios, compute
+# 2. (Optional) refresh dividends from Yahoo Finance for the NPY factor
+python -m src.data_sources.dividends
+
+# 3. Pull history, build the Conservative/Speculative portfolios, compute
 #    ARS + USD-implied return series
 python -m src.backtest.run_backtest --start 2010-01-01
 
-# 3. Performance summary (CAGR, Sharpe, max drawdown, vol) + equity-curve plots,
+# 4. Performance summary (CAGR, Sharpe, max drawdown, vol) + equity-curve plots,
 #    for Conservative vs Speculative vs Merval, in both currencies
 python -m src.backtest.report
 ```
@@ -238,7 +279,8 @@ reports/                      # committed snapshot backing the Results section a
 data/
   raw/                        # gitignored — cached PPI historical pulls
   processed/                  # gitignored — factor scores, returns, reports, plots
-  manual/dividends_template.csv  # expected columns for a future NPY dividends CSV
+  manual/dividends.csv          # cash dividends from Yahoo (+ any manual rows), for NPY
+  manual/dividends_template.csv # column layout for dividends.csv
 src/
   config.py                   # paths, PPI credentials (.env), formula parameters
   data_sources/
@@ -246,9 +288,10 @@ src/
     universe.py                # loads + validates config/universe.csv against PPI
     fx.py                      # implied ARS/USD from dollar-linked bond pairs
     benchmark.py                # S&P Merval index history (Yahoo ^MERV, BYMA fallback)
+    dividends.py                # cash dividend history (Yahoo .BA) -> data/manual/dividends.csv
   formula/
-    factors.py                 # trailing volatility, 12-1 momentum, NPY stub
-    portfolio.py                # low-vol/momentum ranking -> Conservative/Speculative portfolios
+    factors.py                 # trailing volatility, 12-1 momentum, net payout yield
+    portfolio.py                # low-vol split + momentum/NPY ranking -> Conservative/Speculative
   backtest/
     run_backtest.py             # end-to-end pipeline
     ratios.py                   # CAGR, vol, Sharpe, max drawdown

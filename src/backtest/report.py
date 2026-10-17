@@ -74,6 +74,10 @@ def main():
         raise SystemExit(f"{returns_path} not found — run `python -m src.backtest.run_backtest` first.")
 
     returns_df = pd.read_csv(returns_path, index_col=0, parse_dates=True)
+    # The Merval series starts before the first portfolio return (the
+    # portfolios need 12+ months of history to rank); measure everything over
+    # the same months so the benchmark comparison is like-for-like.
+    returns_df = returns_df.loc[returns_df["conservative_ars"].first_valid_index():]
 
     report = build_report(returns_df)
     print("\n=== Performance summary (monthly series) ===")
@@ -86,8 +90,8 @@ def main():
     ars_cols = [c for c in returns_df.columns if c.endswith("_ars")]
     usd_cols = [c for c in returns_df.columns if c.endswith("_usd")]
 
-    plot_equity_curves(returns_df, ars_cols, "Conservative Formula (2-factor) — ARS nominal", config.DATA_PROCESSED / "equity_curve_ars.png")
-    plot_equity_curves(returns_df, usd_cols, "Conservative Formula (2-factor) — USD implied (CCL)", config.DATA_PROCESSED / "equity_curve_usd.png")
+    plot_equity_curves(returns_df, ars_cols, "Conservative Formula — ARS nominal", config.DATA_PROCESSED / "equity_curve_ars.png")
+    plot_equity_curves(returns_df, usd_cols, "Conservative Formula — USD implied (CCL)", config.DATA_PROCESSED / "equity_curve_usd.png")
     print(f"Wrote equity curve plots to {config.DATA_PROCESSED}")
 
 

@@ -11,7 +11,7 @@ ppi_client/api/accounts.py):
 
 PPI has no endpoint to list "all instruments in a market" and no
 dividends/corporate-actions endpoint — see src/data_sources/universe.py and
-src/formula/factors.py (compute_npy stub) for how those gaps are handled.
+src/data_sources/dividends.py (Yahoo Finance) for how those gaps are handled.
 
 Historical pulls are cached to disk (data/raw/) since PPI documents no rate
 limit but a conservative delay is applied anyway, matching the pattern used

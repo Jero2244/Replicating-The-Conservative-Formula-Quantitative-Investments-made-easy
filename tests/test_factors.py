@@ -4,7 +4,13 @@ No PPI credentials needed — run with `pytest tests/`.
 import numpy as np
 import pandas as pd
 
-from src.formula.factors import momentum_12_1, trailing_volatility
+from src.formula.factors import (
+    dividend_yield,
+    momentum_12_1,
+    net_buyback_yield,
+    net_payout_yield,
+    trailing_volatility,
+)
 from src.formula.portfolio import build_portfolio_returns, select_portfolios
 
 
@@ -109,3 +115,92 @@ def test_build_portfolio_returns_rebalances_with_tz_aware_index():
 
     _, holdings = build_portfolio_returns(prices, vol_df, mom_df, freq="Q")
     assert len(holdings) > 0
+
+
+def _dividends(rows):
+    return pd.DataFrame(rows, columns=["ticker", "ex_date", "dividend_per_share", "price_before_ex"]).assign(
+        ex_date=lambda d: pd.to_datetime(d["ex_date"])
+    )
+
+
+def test_dividend_yield_sums_event_yields_over_trailing_window():
+    idx = _monthly_index(24, start="2020-01-31")
+    prices = pd.DataFrame({"A": 100.0, "B": 50.0}, index=idx)
+    divs = _dividends([
+        ("A", "2020-03-10", 5.0, 100.0),   # 5%
+        ("A", "2021-02-10", 3.0, 150.0),   # 2% — measured against the price when paid
+        ("A", "2021-06-10", 1.0, 100.0),   # 1%
+    ])
+
+    dy = dividend_yield(prices, divs, window=12)
+
+    assert dy["A"].iloc[:11].isna().all()  # window not yet full
+    assert np.isclose(dy.loc["2020-12-31", "A"], 0.05)
+    assert np.isclose(dy.loc["2021-02-28", "A"], 0.07)
+    assert np.isclose(dy.loc["2021-03-31", "A"], 0.02)  # March 2020 dividend rolled out
+    assert np.isclose(dy.loc["2021-12-31", "A"], 0.03)
+    assert (dy["B"].iloc[11:] == 0.0).all()  # no dividends -> zero yield, not NaN
+
+
+def test_dividend_yield_falls_back_to_previous_month_end_price():
+    idx = _monthly_index(13, start="2020-01-31")
+    prices = pd.DataFrame({"A": [100.0] * 5 + [200.0] * 8}, index=idx)
+    divs = _dividends([("A", "2020-06-15", 10.0, np.nan)])  # May month-end price = 100
+
+    dy = dividend_yield(prices, divs, window=12)
+    assert np.isclose(dy["A"].iloc[-1], 0.10)
+
+
+def test_dividend_yield_drops_implausible_events():
+    idx = _monthly_index(12, start="2020-01-31")
+    prices = pd.DataFrame({"A": 100.0}, index=idx)
+    divs = _dividends([("A", "2020-03-10", 2.0, 100.0), ("A", "2020-06-10", 300.0, 100.0)])
+
+    dy = dividend_yield(prices, divs, window=12, max_event_yield=0.25)
+    assert np.isclose(dy["A"].iloc[-1], 0.02)
+
+
+def test_dividend_yield_handles_tz_aware_index_and_missing_prices():
+    idx = _monthly_index(12, start="2020-01-31").tz_localize("America/Argentina/Buenos_Aires")
+    prices = pd.DataFrame({"A": [np.nan] * 11 + [100.0]}, index=idx)
+    divs = _dividends([("A", "2020-06-10", 4.0, 80.0)])
+
+    dy = dividend_yield(prices, divs, window=12)
+    assert dy.index.equals(idx)
+    assert dy["A"].iloc[:11].isna().all()  # NaN where the stock has no price
+    assert np.isclose(dy["A"].iloc[-1], 0.05)
+
+
+def test_net_buyback_yield_positive_when_shares_shrink():
+    idx = _monthly_index(24, start="2020-01-31")
+    prices = pd.DataFrame({"A": 100.0, "B": 100.0}, index=idx)
+    shares = pd.DataFrame({
+        "ticker": ["A"] * 24,
+        "date": idx,
+        "shares_outstanding": [1000.0] * 12 + [900.0] * 12,  # 10% bought back halfway
+    })
+
+    by = net_buyback_yield(prices, shares, window=24)
+    assert np.isclose(by["A"].iloc[-1], 1 - 900 / 950)
+    assert (by["B"] == 0.0).all()
+
+
+def test_net_payout_yield_is_none_without_dividends():
+    prices = pd.DataFrame({"A": 100.0}, index=_monthly_index(12))
+    assert net_payout_yield(prices, None) is None
+
+
+def test_select_portfolios_averages_momentum_and_npy_ranks():
+    tickers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+    vol_row = pd.Series([0.1] * 5 + [0.5] * 5, index=tickers)
+    mom_row = pd.Series([0.30, 0.20, 0.10, 0.05, 0.01, -0.01, -0.05, -0.10, -0.20, -0.30], index=tickers)
+    # Within the low-vol half, C and D pay big dividends and A pays nothing,
+    # so the combined rank should prefer B and C over momentum leader A.
+    npy_row = pd.Series([0.00, 0.06, 0.08, 0.07, 0.01, 0.10, 0.08, 0.06, 0.00, 0.01], index=tickers)
+
+    conservative, speculative = select_portfolios(vol_row, mom_row, npy_row, low_vol_pct=0.5, top_pct=0.4)
+
+    # Low-vol ranks (mom, npy -> avg): A(5,1)=3, B(4,3)=3.5, C(3,5)=4, D(2,4)=3, E(1,2)=1.5
+    assert conservative == ["C", "B"]
+    # High-vol ranks: F(5,5)=5, G(4,4)=4, H(3,3)=3, I(2,1)=1.5, J(1,2)=1.5
+    assert speculative == ["I", "J"]

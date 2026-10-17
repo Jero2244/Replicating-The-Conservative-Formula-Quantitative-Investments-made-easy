@@ -3,13 +3,16 @@ following the paper's mechanism (Figure 1) at Argentina's smaller scale:
 
     1. Split the eligible universe into low-vol / high-vol halves by trailing
        volatility (LOW_VOL_PCT).
-    2. Within the low-vol half, rank by 12-1 month momentum and take the top
-       TOP_PCT as "Conservative". Within the high-vol half, take the worst
-       momentum names as "Speculative" (long-short comparison portfolio, same
-       as the paper's CMS construction).
+    2. Within each half, rank stocks on 12-1 month momentum and on net payout
+       yield (NPY) and average the two ranks (paper: "the momentum and NPY
+       ranks are simply averaged"). Take the best TOP_PCT of the low-vol half
+       as "Conservative" and the worst TOP_PCT of the high-vol half as
+       "Speculative" (long-short comparison portfolio, same as the paper's
+       CMS construction).
     3. Equal-weight both, rebalanced quarterly.
 
-NPY is not part of the ranking yet (see src/formula/factors.py::compute_npy).
+Without NPY data (npy_row / npy_df = None) the ranking is momentum alone —
+the 2-factor (Low-Vol + Momentum) version.
 """
 from __future__ import annotations
 
@@ -21,16 +24,19 @@ from src import config
 def select_portfolios(
     vol_row: pd.Series,
     mom_row: pd.Series,
+    npy_row: pd.Series | None = None,
     low_vol_pct: float = config.LOW_VOL_PCT,
     top_pct: float = config.TOP_PCT,
 ) -> tuple[list[str], list[str]]:
     """Cross-sectional selection for a single rebalance date.
 
-    `vol_row` / `mom_row` are the vol/momentum values for every ticker as of
-    that date (e.g. `vol_df.loc[date]`). Returns (conservative, speculative)
-    ticker lists.
+    `vol_row` / `mom_row` / `npy_row` are the factor values for every ticker
+    as of that date (e.g. `vol_df.loc[date]`). Returns (conservative,
+    speculative) ticker lists.
     """
     valid = vol_row.dropna().index.intersection(mom_row.dropna().index)
+    if npy_row is not None:
+        valid = valid.intersection(npy_row.dropna().index)
     if len(valid) < 10:
         # Too few names with enough history to rank meaningfully.
         return [], []
@@ -42,13 +48,19 @@ def select_portfolios(
     low_vol_pool = ranked_by_vol.index[:n_low]
     high_vol_pool = ranked_by_vol.index[n_low:]
 
+    def combined_score(pool: pd.Index) -> pd.Series:
+        # Higher = better. Ranks are taken within each vol half, as in the paper.
+        if npy_row is None:
+            return mom_s.loc[pool]
+        return (mom_s.loc[pool].rank() + npy_row.loc[pool].rank()) / 2
+
     n_top = max(1, round(len(low_vol_pool) * top_pct))
-    conservative = mom_s.loc[low_vol_pool].sort_values(ascending=False).index[:n_top].tolist()
+    conservative = combined_score(low_vol_pool).sort_values(ascending=False, kind="stable").index[:n_top].tolist()
 
     speculative: list[str] = []
     if len(high_vol_pool) > 0:
         n_bottom = max(1, round(len(high_vol_pool) * top_pct))
-        speculative = mom_s.loc[high_vol_pool].sort_values(ascending=True).index[:n_bottom].tolist()
+        speculative = combined_score(high_vol_pool).sort_values(ascending=True, kind="stable").index[:n_bottom].tolist()
 
     return conservative, speculative
 
@@ -57,6 +69,7 @@ def build_portfolio_returns(
     monthly_prices: pd.DataFrame,
     vol_df: pd.DataFrame,
     mom_df: pd.DataFrame,
+    npy_df: pd.DataFrame | None = None,
     freq: str = config.REBALANCE_FREQ,
 ) -> tuple[pd.DataFrame, dict]:
     """Builds monthly equal-weight return series for the Conservative and
@@ -86,7 +99,8 @@ def build_portfolio_returns(
 
     for i, dt in enumerate(dates):
         if dt in rebalance_dates and dt in vol_df.index and dt in mom_df.index:
-            conservative_tickers, speculative_tickers = select_portfolios(vol_df.loc[dt], mom_df.loc[dt])
+            npy_row = npy_df.loc[dt] if npy_df is not None else None
+            conservative_tickers, speculative_tickers = select_portfolios(vol_df.loc[dt], mom_df.loc[dt], npy_row)
             holdings[dt] = {"conservative": conservative_tickers, "speculative": speculative_tickers}
 
         if i + 1 >= len(dates):

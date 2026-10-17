@@ -1,11 +1,12 @@
-"""The two factors used by the (v1, NPY-less) Conservative Formula:
-trailing volatility and 12-1 month momentum, computed on monthly prices.
+"""The Conservative Formula's factors, computed on monthly prices: trailing
+volatility, 12-1 month momentum, and net payout yield (NPY).
 
-NPY (net payout yield) is stubbed out — see `compute_npy` — because PPI has
-no dividends/buybacks endpoint. Once data/manual/dividends.csv exists (see
-data/manual/dividends_template.csv for the expected columns), compute_npy
-will pick it up automatically and src/formula/portfolio.py's ranking will
-blend it in without needing changes elsewhere.
+NPY = trailing 12-month cash dividend yield + net buyback yield. Dividends
+come from data/manual/dividends.csv (built by src/data_sources/dividends.py);
+buyback yield needs a shares-outstanding history that no available source
+has for the backtest window, so it reads data/manual/shares_outstanding.csv
+if present and is zero otherwise. With no dividends CSV at all, NPY is None
+and the ranking falls back to the 2-factor (Low-Vol + Momentum) version.
 """
 from __future__ import annotations
 
@@ -48,22 +49,95 @@ def momentum_12_1(monthly_prices: pd.DataFrame) -> pd.DataFrame:
     return monthly_prices.shift(skip) / monthly_prices.shift(lookback) - 1.0
 
 
-def compute_npy(ticker: str, as_of_date) -> float | None:
-    """Net Payout Yield stub.
+def _month_periods(index: pd.DatetimeIndex) -> pd.PeriodIndex:
+    # Drop tz first: PPI prices are tz-aware, and to_period() on a tz-aware
+    # index warns. Month-end dates are the same month either way.
+    return (index.tz_localize(None) if index.tz is not None else index).to_period("M")
 
-    Returns None (factor excluded from ranking) until data/manual/dividends.csv
-    is populated. Expected columns: ticker, ex_date, dividend_per_share,
-    currency, source (see data/manual/dividends_template.csv). Once present,
-    this should compute trailing (e.g. 12-month) dividends-per-share divided
-    by price as of `as_of_date`, optionally netted against any available
-    shares-outstanding change (buybacks/issuance) if that data is ever sourced.
-    """
-    if not config.DIVIDENDS_CSV.exists():
+
+def load_dividends(path=config.DIVIDENDS_CSV) -> pd.DataFrame | None:
+    """data/manual/dividends.csv as a DataFrame, or None if it doesn't exist."""
+    if not path.exists():
         return None
-    # TODO: implement once data/manual/dividends.csv exists — trailing dividend
-    # yield as of as_of_date, keyed by ticker. Left unimplemented on purpose:
-    # the paper's NPY also nets buyback/issuance yield, which still has no
-    # data source here (see plan notes on Refinitiv/CNV as candidates).
-    raise NotImplementedError(
-        "data/manual/dividends.csv found but compute_npy() is not implemented yet."
+    return pd.read_csv(path, parse_dates=["ex_date"])
+
+
+def load_shares_outstanding(path=config.SHARES_OUTSTANDING_CSV) -> pd.DataFrame | None:
+    """Optional (ticker, date, shares_outstanding) history, or None."""
+    if not path.exists():
+        return None
+    return pd.read_csv(path, parse_dates=["date"])
+
+
+def dividend_yield(
+    monthly_prices: pd.DataFrame,
+    dividends: pd.DataFrame,
+    window: int = config.NPY_DIVIDEND_WINDOW_MONTHS,
+    max_event_yield: float = config.MAX_EVENT_DIVIDEND_YIELD,
+) -> pd.DataFrame:
+    """Trailing `window`-month cash dividend yield, per ticker (dates x tickers).
+
+    Each dividend is divided by the price just before its ex-date
+    (`price_before_ex`, falling back to the previous month-end price in
+    `monthly_prices`) and the per-event yields in the window are summed.
+    Measuring each payout against the price when it was paid keeps the yield
+    meaningful under Argentine inflation. Events above `max_event_yield` are
+    dropped as data errors. Tickers with no dividends get 0.
+    """
+    periods = _month_periods(monthly_prices.index)
+    divs = dividends[dividends["ticker"].isin(monthly_prices.columns)].copy()
+    divs["period"] = divs["ex_date"].dt.to_period("M")
+
+    price = divs["price_before_ex"] if "price_before_ex" in divs else pd.Series(float("nan"), index=divs.index)
+    prev_month_price = monthly_prices.set_axis(periods).shift(1).stack()
+    fallback = pd.Series(list(zip(divs["period"], divs["ticker"])), index=divs.index).map(prev_month_price)
+    divs["event_yield"] = divs["dividend_per_share"] / price.fillna(fallback)
+    divs = divs[divs["event_yield"] <= max_event_yield]
+
+    monthly_yield = (
+        divs.pivot_table(index="period", columns="ticker", values="event_yield", aggfunc="sum")
+        .reindex(index=periods, columns=monthly_prices.columns)
+        .fillna(0.0)
     )
+    trailing = monthly_yield.rolling(window=window, min_periods=window).sum()
+    return trailing.set_axis(monthly_prices.index).where(monthly_prices.notna())
+
+
+def net_buyback_yield(
+    monthly_prices: pd.DataFrame,
+    shares: pd.DataFrame,
+    window: int = config.NPY_SHARES_WINDOW_MONTHS,
+) -> pd.DataFrame:
+    """1 - latest shares outstanding / trailing `window`-month average shares.
+
+    Positive when the share count shrank (net buybacks), negative for net
+    issuance. Shares must be split/stock-dividend adjusted, otherwise a stock
+    dividend shows up as dilution. Tickers/dates without data get 0.
+    """
+    periods = _month_periods(monthly_prices.index)
+    shares = shares.assign(period=shares["date"].dt.to_period("M"))
+    monthly_shares = (
+        shares.pivot_table(index="period", columns="ticker", values="shares_outstanding", aggfunc="last")
+        .reindex(index=periods, columns=monthly_prices.columns)
+        .ffill()
+    )
+    avg = monthly_shares.rolling(window=window, min_periods=window).mean()
+    return (1.0 - monthly_shares / avg).fillna(0.0).set_axis(monthly_prices.index)
+
+
+def net_payout_yield(
+    monthly_prices: pd.DataFrame,
+    dividends: pd.DataFrame | None,
+    shares: pd.DataFrame | None = None,
+) -> pd.DataFrame | None:
+    """NPY = dividend yield + net buyback yield (dates x tickers).
+
+    Returns None when there's no dividend data, which tells the portfolio
+    step to rank on momentum alone (2-factor version).
+    """
+    if dividends is None:
+        return None
+    npy = dividend_yield(monthly_prices, dividends)
+    if shares is not None:
+        npy = npy + net_buyback_yield(monthly_prices, shares)
+    return npy

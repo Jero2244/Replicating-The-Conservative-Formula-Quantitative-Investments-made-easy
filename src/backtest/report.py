@@ -1,29 +1,20 @@
 """Performance report for the Conservative/Speculative/Merval return series
 produced by run_backtest.py.
 
-Reuses the ratio functions from the already-installed `backtesting` skill
-(pure numpy/pandas, no package install needed) instead of reimplementing
-Sharpe/CAGR/max-drawdown math:
-    C:\\Users\\HP Laptop\\.claude\\skills\\backtesting\\scripts\\ratios.py
+Sharpe/CAGR/max-drawdown math lives in src/backtest/ratios.py.
 
 Usage:
     python -m src.backtest.report
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from src import config
-
-_BACKTESTING_SKILL_SCRIPTS = Path.home() / ".claude" / "skills" / "backtesting" / "scripts"
-if str(_BACKTESTING_SKILL_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_BACKTESTING_SKILL_SCRIPTS))
-
-from ratios import annualized_vol, cagr, cumulative_returns, max_drawdown, sharpe_ratio  # noqa: E402
+from src.backtest.ratios import annualized_vol, cagr, cumulative_returns, max_drawdown, sharpe_ratio
 
 PERIODS_PER_YEAR = 12  # monthly return series
 

@@ -3,7 +3,7 @@
 resulting ARS return series to USD-implied returns via the bond-pair FX proxy.
 
 Usage:
-    python -m src.backtest.run_backtest --start 2015-01-01 --end 2026-07-01
+    python -m src.backtest.run_backtest --start 2010-01-01 --end 2026-07-01
 
 Writes:
     data/processed/portfolio_returns.csv   (date, conservative, speculative, merval — ARS & USD)
@@ -88,7 +88,7 @@ def run(date_from, date_to) -> pd.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--start", default="2015-01-01", help="Start date, YYYY-MM-DD")
+    parser.add_argument("--start", default="2010-01-01", help="Start date, YYYY-MM-DD")
     parser.add_argument("--end", default=date.today().isoformat(), help="End date, YYYY-MM-DD")
     args = parser.parse_args()
     run(args.start, args.end)

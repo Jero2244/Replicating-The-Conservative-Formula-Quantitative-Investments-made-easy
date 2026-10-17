@@ -20,6 +20,7 @@ TRAN,Transener,lider,Utilities
 TXAR,Ternium Argentina,lider,Materials
 VALO,Grupo Financiero Valores,lider,Financials
 YPFD,YPF,lider,Energy
+A3,A3 Mercados (ex Matba Rofex),general,Financials
 AGRO,Agrometal,general,Industrials
 AUSO,Autopistas del Sol,general,Industrials
 BHIP,Banco Hipotecario,general,Financials
@@ -30,23 +31,23 @@ CAPX,Capex,general,Energy
 CARC,Carboclor,general,Materials
 CECO2,Central Costanera,general,Utilities
 CELU,Celulosa Argentina,general,Materials
-CGPA2,,general,
+CGPA2,Camuzzi Gas Pampeana,general,Utilities
 CTIO,Consultatio,general,RealEstate
 DGCU2,Distribuidora de Gas Cuyana,general,Utilities
-DOME,,general,
-DYCA,,general,
+DOME,Domec,general,ConsumerDiscretionary
+DYCA,Dycasa,general,Industrials
 FERR,Ferrum,general,Industrials
-FIPL,,general,
-GAMI,,general,
+FIPL,Fiplasto,general,Materials
+GAMI,B-Gaming (Boldt Gaming),general,ConsumerDiscretionary
 GARO,Garovaglio y Zorraquin,general,Holding
-GBAN,,general,
-GCDI,,general,
+GBAN,Naturgy BAN (Gas Natural BAN),general,Utilities
+GCDI,GCDI (ex TGLT),general,Industrials
 GCLA,Grupo Clarin,general,Telecom
 GRIM,Grimoldi,general,ConsumerDiscretionary
-HARG,,general,
+HARG,Holcim Argentina,general,Materials
 HAVA,Havanna Holding,general,ConsumerStaples
 HSAT,,general,
-INTR,,general,
+INTR,Compania Introductora de Buenos Aires,general,ConsumerStaples
 INVJ,Inversora Juramento,general,ConsumerStaples
 IRSA,IRSA Inversiones y Representaciones,general,RealEstate
 LEDE,Ledesma,general,ConsumerStaples
@@ -55,12 +56,11 @@ METR,Metrogas,general,Utilities
 MOLA,Molinos Agro,general,ConsumerStaples
 MOLI,Molinos Rio de la Plata,general,ConsumerStaples
 MORI,Morixe,general,ConsumerStaples
-MTR,,general,
 OEST,Oeste,general,Industrials
 PATA,Importadora y Exportadora de la Patagonia,general,ConsumerDiscretionary
 POLL,Polledo,general,ConsumerStaples
 RICH,Laboratorios Richmond,general,HealthCare
 RIGO,Rigolleau,general,Materials
-ROSE,,general,
-SAMI,,general,
+ROSE,Instituto Rosenbusch,general,HealthCare
+SAMI,San Miguel,general,ConsumerStaples
 SEMI,Molinos Juan Semino,general,ConsumerStaples

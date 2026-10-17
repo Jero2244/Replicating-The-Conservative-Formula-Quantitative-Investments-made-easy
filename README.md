@@ -52,10 +52,16 @@ from the local `data912` skill's static ticker catalog. `name`/`sector` are
 left blank (`—`) where not confidently known rather than guessed; edit the
 CSV directly to fill gaps or add/remove tickers.
 
-`MTR` and `DYCA` are listed but don't currently resolve via PPI's
-`SearchInstrument` (likely delisted/renamed) — `python -m src.data_sources.universe`
-flags any ticker that stops resolving, so it's worth re-running after editing
-the list.
+`python -m src.data_sources.universe` flags any ticker that doesn't resolve
+via PPI's `SearchInstrument`, so it's worth re-running after editing the list.
+Known cases:
+
+- `MTR` (Matba Rofex) merged with MAE and has traded as **`A3`** (A3 Mercados)
+  since 2025-03-05; the list now uses `A3`. Its price history only starts at
+  the merger, so it's ineligible until it has 12+ months of data.
+- `DYCA` (Dycasa) is still on BYMA's Panel General list but didn't resolve
+  via PPI on the last check; the backtest just skips it if it returns no data.
+- `HSAT`'s company couldn't be confirmed, so its name/sector stay blank.
 
 ### Panel Líder (21 stocks)
 
@@ -88,6 +94,7 @@ the list.
 
 | Ticker | Name | Sector |
 |---|---|---|
+| A3 | A3 Mercados (ex Matba Rofex) | Financials |
 | AGRO | Agrometal | Industrials |
 | AUSO | Autopistas del Sol | Industrials |
 | BHIP | Banco Hipotecario | Financials |
@@ -98,23 +105,23 @@ the list.
 | CARC | Carboclor | Materials |
 | CECO2 | Central Costanera | Utilities |
 | CELU | Celulosa Argentina | Materials |
-| CGPA2 | — | — |
+| CGPA2 | Camuzzi Gas Pampeana | Utilities |
 | CTIO | Consultatio | RealEstate |
 | DGCU2 | Distribuidora de Gas Cuyana | Utilities |
-| DOME | — | — |
-| DYCA | — | — |
+| DOME | Domec | ConsumerDiscretionary |
+| DYCA | Dycasa | Industrials |
 | FERR | Ferrum | Industrials |
-| FIPL | — | — |
-| GAMI | — | — |
+| FIPL | Fiplasto | Materials |
+| GAMI | B-Gaming (Boldt Gaming) | ConsumerDiscretionary |
 | GARO | Garovaglio y Zorraquin | Holding |
-| GBAN | — | — |
-| GCDI | — | — |
+| GBAN | Naturgy BAN (Gas Natural BAN) | Utilities |
+| GCDI | GCDI (ex TGLT) | Industrials |
 | GCLA | Grupo Clarin | Telecom |
 | GRIM | Grimoldi | ConsumerDiscretionary |
-| HARG | — | — |
+| HARG | Holcim Argentina | Materials |
 | HAVA | Havanna Holding | ConsumerStaples |
 | HSAT | — | — |
-| INTR | — | — |
+| INTR | Compania Introductora de Buenos Aires | ConsumerStaples |
 | INVJ | Inversora Juramento | ConsumerStaples |
 | IRSA | IRSA Inversiones y Representaciones | RealEstate |
 | LEDE | Ledesma | ConsumerStaples |
@@ -123,14 +130,13 @@ the list.
 | MOLA | Molinos Agro | ConsumerStaples |
 | MOLI | Molinos Rio de la Plata | ConsumerStaples |
 | MORI | Morixe | ConsumerStaples |
-| MTR | — | — |
 | OEST | Oeste | Industrials |
 | PATA | Importadora y Exportadora de la Patagonia | ConsumerDiscretionary |
 | POLL | Polledo | ConsumerStaples |
 | RICH | Laboratorios Richmond | HealthCare |
 | RIGO | Rigolleau | Materials |
-| ROSE | — | — |
-| SAMI | — | — |
+| ROSE | Instituto Rosenbusch | HealthCare |
+| SAMI | San Miguel | ConsumerStaples |
 | SEMI | Molinos Juan Semino | ConsumerStaples |
 
 </details>
@@ -170,9 +176,11 @@ meaningfully smaller drawdown, in both nominal ARS and USD-implied terms.
 **Caveats before reading too much into this:**
 - NPY isn't in the ranking yet (see above) — this is testing 2 of the
   paper's 3 factors.
-- *The Merval benchmark comes from BYMA's free public endpoint, which
-  silently caps history at ~2 years regardless of the requested range —
-  it's shown for the overlapping window only, not the full backtest.
+- *The Merval rows above are from an older run, when the benchmark came
+  from BYMA's free endpoint, which silently caps history at ~2 years. The
+  benchmark now comes from Yahoo Finance (`^MERV`, full history; it matches
+  BYMA's closes over the 2 years where both have data), so re-running the
+  pipeline will produce full-period Merval figures.
 - USD-implied returns only go back to late 2020 because the AL30/GD30
   dollar-linked bonds used for the CCL proxy didn't exist before that
   year's debt restructuring.
@@ -202,7 +210,7 @@ python -m src.data_sources.universe
 
 # 2. Pull history, build the Conservative/Speculative portfolios, compute
 #    ARS + USD-implied return series
-python -m src.backtest.run_backtest --start 2015-01-01
+python -m src.backtest.run_backtest --start 2010-01-01
 
 # 3. Performance summary (CAGR, Sharpe, max drawdown, vol) + equity-curve plots,
 #    for Conservative vs Speculative vs Merval, in both currencies
@@ -237,12 +245,13 @@ src/
     ppi_client.py             # PPI SDK wrapper (auth, historical search, caching)
     universe.py                # loads + validates config/universe.csv against PPI
     fx.py                      # implied ARS/USD from dollar-linked bond pairs
-    benchmark.py                # S&P Merval index history (BYMA public API)
+    benchmark.py                # S&P Merval index history (Yahoo ^MERV, BYMA fallback)
   formula/
     factors.py                 # trailing volatility, 12-1 momentum, NPY stub
     portfolio.py                # low-vol/momentum ranking -> Conservative/Speculative portfolios
   backtest/
     run_backtest.py             # end-to-end pipeline
-    report.py                   # performance metrics (via the `backtesting` skill's ratios.py) + plots
-tests/test_factors.py          # unit tests on synthetic data
+    ratios.py                   # CAGR, vol, Sharpe, max drawdown
+    report.py                   # performance metrics + plots
+tests/                         # unit tests on synthetic data
 ```

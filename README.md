@@ -5,6 +5,9 @@ holds on the Argentine equity market, using the
 [Portfolio Personal de Inversiones (PPI) API](https://itatppi.github.io/ppi-official-api-docs/)
 for market data.
 
+A paper-style write-up of the results, laid out like the original, is in
+[`reports/conservative_formula_argentina.pdf`](reports/conservative_formula_argentina.pdf).
+
 ## Key findings
 
 All figures: Apr 2011 – Sep 2026 (186 months), in nominal ARS and in USD at
@@ -295,11 +298,16 @@ python -m src.backtest.run_backtest --start 2010-01-01
 # 4. Performance summary (CAGR, Sharpe, max drawdown, vol) + equity-curve plots,
 #    for Conservative vs Speculative vs Merval, in both currencies
 python -m src.backtest.report
+
+# 5. (Optional) paper-style PDF write-up of the results
+python -m src.backtest.paper
 ```
 
 Outputs land in `data/processed/` (gitignored — regenerate anytime by
 re-running the pipeline): `portfolio_returns.csv`, `holdings.json`,
-`performance_summary.csv`, `equity_curve_ars.png`, `equity_curve_usd.png`.
+`performance_summary.csv`, `equity_curve_ars.png`, `equity_curve_usd.png`,
+`conservative_formula_argentina.pdf`. The PDF's prose quotes the current
+results, so re-read it after a re-run with new data.
 
 ## Tests
 
@@ -314,7 +322,8 @@ Unit tests run on synthetic data only — no PPI credentials required.
 ```
 config/universe.csv           # curated Argentine stock universe (ticker, name, panel, sector)
 reports/                      # committed snapshot backing the Results section above
-  performance_summary.csv, equity_curve_ars.png, equity_curve_usd.png
+  performance_summary.csv, equity_curve_ars.png, equity_curve_usd.png,
+  conservative_formula_argentina.pdf  # paper-style write-up
 data/
   raw/                        # gitignored — cached PPI historical pulls
   processed/                  # gitignored — factor scores, returns, reports, plots
@@ -335,5 +344,6 @@ src/
     run_backtest.py             # end-to-end pipeline
     ratios.py                   # CAGR, vol, Sharpe, max drawdown
     report.py                   # performance metrics + plots
+    paper.py                    # paper-style PDF write-up of the results
 tests/                         # unit tests on synthetic data
 ```

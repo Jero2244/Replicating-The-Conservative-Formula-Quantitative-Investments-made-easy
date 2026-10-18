@@ -5,3 +5,4 @@ scipy
 python-dotenv
 matplotlib
 pytest
+reportlab

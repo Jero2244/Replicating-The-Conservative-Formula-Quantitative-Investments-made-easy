@@ -324,6 +324,7 @@ config/universe.csv           # curated Argentine stock universe (ticker, name, 
 reports/                      # committed snapshot backing the Results section above
   performance_summary.csv, equity_curve_ars.png, equity_curve_usd.png,
   conservative_formula_argentina.pdf  # paper-style write-up
+  holdings_sensitivity.csv    # portfolio-size sensitivity (see Appendix)
 data/
   raw/                        # gitignored — cached PPI historical pulls
   processed/                  # gitignored — factor scores, returns, reports, plots
@@ -344,6 +345,108 @@ src/
     run_backtest.py             # end-to-end pipeline
     ratios.py                   # CAGR, vol, Sharpe, max drawdown
     report.py                   # performance metrics + plots
+    run_holdings_sensitivity.py # fixed-N holdings re-run (see Appendix)
     paper.py                    # paper-style PDF write-up of the results
 tests/                         # unit tests on synthetic data
 ```
+
+## Appendix: portfolio size sensitivity
+
+The main results hold the best 30% of the low-vol half (~8.5 names on
+average). This re-runs the backtest with a fixed number of stocks per
+portfolio instead, same data and window as the main run (PPI prices,
+bond/ADR-implied CCL, Apr 2011 – Sep 2026, quarterly rebalance). The `base`
+row reproduces the main results exactly. Reproduce with:
+
+```bash
+python -m src.backtest.run_holdings_sensitivity --sizes 5 6 7 10 15 20 25
+```
+
+The full numbers are in
+[`reports/holdings_sensitivity.csv`](reports/holdings_sensitivity.csv).
+Where the low-vol half has fewer names than requested (early years, and
+the 25-name run), the portfolio holds the whole half; "Avg. names" is the
+actual average. Merval figures differ slightly from the main tables above
+(53.1% / 6.8% vs 54.2% / 4.9% CAGR), probably because Yahoo has revised
+its index history since the main run.
+
+### Conservative, nominal ARS
+
+| Stocks held | Avg. names | CAGR, no NPY | Sharpe, no NPY | Max DD, no NPY | CAGR, with NPY | Sharpe, with NPY | Max DD, with NPY |
+|---|---|---|---|---|---|---|---|
+| base (30% rule) | 8.5 | 58.3% | 1.26 | -43% | 47.8% | 1.18 | -43% |
+| 5 | 5.0 | 59.7% | 1.26 | -49% | 41.5% | 1.04 | -49% |
+| 6 | 6.0 | **62.8%** | 1.30 | -41% | 41.7% | 1.06 | -47% |
+| 7 | 7.0 | 60.8% | 1.28 | -42% | 47.5% | 1.17 | -42% |
+| 10 | 10.0 | 54.1% | 1.23 | -41% | 51.8% | 1.22 | -44% |
+| 15 | 15.0 | 53.3% | 1.22 | -44% | 53.8% | 1.26 | -46% |
+| 20 | 20.0 | 55.1% | 1.27 | -45% | 54.0% | 1.26 | -44% |
+| 25 | 24.9 | 54.2% | 1.26 | -41% | 52.4% | 1.25 | -42% |
+| *Merval* | | *53.1%* | *1.16* | *-42%* | | | |
+
+### Conservative, USD-implied
+
+| Stocks held | Avg. names | CAGR, no NPY | Sharpe, no NPY | Max DD, no NPY | CAGR, with NPY | Sharpe, with NPY | Max DD, with NPY |
+|---|---|---|---|---|---|---|---|
+| base (30% rule) | 8.5 | 7.7% | 0.39 | -85% | 0.5% | 0.22 | -86% |
+| 5 | 5.0 | 8.6% | 0.41 | -79% | -3.7% | 0.12 | -88% |
+| 6 | 6.0 | **10.7%** | 0.45 | -80% | -3.6% | 0.12 | -87% |
+| 7 | 7.0 | 9.4% | 0.43 | -85% | 0.4% | 0.22 | -84% |
+| 10 | 10.0 | 4.8% | 0.32 | -85% | 3.2% | 0.29 | -85% |
+| 15 | 15.0 | 4.3% | 0.31 | -83% | 4.7% | 0.32 | -82% |
+| 20 | 20.0 | 5.5% | 0.34 | -82% | 4.8% | 0.32 | -80% |
+| 25 | 24.9 | 4.9% | 0.33 | -81% | 3.7% | 0.30 | -81% |
+| *Merval* | | *6.8%* | *0.38* | *-84%* | | | |
+
+### Speculative, nominal ARS
+
+| Stocks held | Avg. names | CAGR, no NPY | Sharpe, no NPY | Max DD, no NPY | CAGR, with NPY | Sharpe, with NPY | Max DD, with NPY |
+|---|---|---|---|---|---|---|---|
+| base (30% rule) | 8.6 | 28.8% | 0.73 | -60% | 39.9% | 0.86 | -58% |
+| 5 | 5.0 | 26.1% | 0.67 | -62% | 32.2% | 0.74 | -65% |
+| 6 | 6.0 | 26.9% | 0.69 | -63% | 33.8% | 0.76 | -64% |
+| 7 | 7.0 | 27.8% | 0.70 | -65% | 36.9% | 0.82 | -60% |
+| 10 | 10.0 | 34.0% | 0.81 | -58% | 37.5% | 0.84 | -59% |
+| 15 | 15.0 | 38.4% | 0.89 | -59% | 43.9% | 0.95 | -60% |
+| 20 | 20.0 | 41.1% | 0.94 | -58% | 47.6% | 1.01 | -59% |
+| 25 | 25.0 | 46.8% | 1.01 | -58% | 46.2% | 1.00 | -59% |
+
+### Speculative, USD-implied
+
+| Stocks held | Avg. names | CAGR, no NPY | Sharpe, no NPY | Max DD, no NPY | CAGR, with NPY | Sharpe, with NPY | Max DD, with NPY |
+|---|---|---|---|---|---|---|---|
+| base (30% rule) | 8.6 | -12.4% | -0.04 | -93% | -4.8% | 0.15 | -92% |
+| 5 | 5.0 | -14.2% | -0.06 | -93% | -10.1% | 0.06 | -96% |
+| 6 | 6.0 | -13.7% | -0.05 | -94% | -8.9% | 0.08 | -95% |
+| 7 | 7.0 | -13.1% | -0.04 | -94% | -6.8% | 0.12 | -93% |
+| 10 | 10.0 | -8.8% | 0.04 | -91% | -6.5% | 0.11 | -93% |
+| 15 | 15.0 | -5.8% | 0.11 | -91% | -2.1% | 0.20 | -92% |
+| 20 | 20.0 | -4.0% | 0.15 | -91% | 0.4% | 0.26 | -91% |
+| 25 | 25.0 | -0.1% | 0.24 | -90% | -0.5% | 0.24 | -91% |
+
+### What it shows
+
+1. **Fewer names is better for the version without NPY.** It peaks at 6
+   stocks (62.8% ARS, 10.7% USD, Sharpe 1.30 / 0.45) and fades to ~54% /
+   ~5% at 10–25 names. That is a small gap, and the 5/6/7 results are not
+   monotonic (59.7 / 62.8 / 60.8%), so the exact peak is noise; the broad
+   pattern is concentration helps.
+2. **The NPY penalty depends on concentration.** Without NPY earns ~18
+   points more a year in ARS at 5–6 names, ~10 at the base size, and
+   roughly 0–3 at 15+ names, where the two are level. At 5–6 names the
+   with-NPY version loses money in USD (about -3.6% a year). Finding 1 in
+   [Key findings](#key-findings) is therefore strongest for small
+   portfolios; with 15+ names NPY costs little but adds nothing.
+3. **Conservative beats Speculative at every size**, but the gap narrows as
+   portfolios grow (each converges toward the average low-/high-vol stock):
+   Speculative's USD CAGR goes from -14% at 5 names to about 0% at 25.
+4. **Only small portfolios clearly beat the Merval.** The version without
+   NPY beats it in both currencies at 5–7 names and the base size. From 10
+   names up it still leads in ARS by 0–2 points but trails in USD.
+5. **Diversifying doesn't fix the currency risk.** ARS drawdowns stay at
+   about -41% to -49% at every size, and the USD ones only improve from
+   about -86% to -80%.
+
+Caveats from the main run apply (64 stocks, dividend-only NPY). With so few
+stocks, differences of a few points between neighbouring sizes are within
+noise.

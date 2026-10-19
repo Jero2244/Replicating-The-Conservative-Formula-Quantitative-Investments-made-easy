@@ -27,12 +27,14 @@ def select_portfolios(
     npy_row: pd.Series | None = None,
     low_vol_pct: float = config.LOW_VOL_PCT,
     top_pct: float = config.TOP_PCT,
+    n_holdings: int | None = None,
 ) -> tuple[list[str], list[str]]:
     """Cross-sectional selection for a single rebalance date.
 
     `vol_row` / `mom_row` / `npy_row` are the factor values for every ticker
     as of that date (e.g. `vol_df.loc[date]`). Returns (conservative,
-    speculative) ticker lists.
+    speculative) ticker lists. With `n_holdings`, each portfolio holds that
+    many names (capped at the size of its vol half) instead of `top_pct`.
     """
     valid = vol_row.dropna().index.intersection(mom_row.dropna().index)
     if npy_row is not None:
@@ -54,12 +56,17 @@ def select_portfolios(
             return mom_s.loc[pool]
         return (mom_s.loc[pool].rank() + npy_row.loc[pool].rank()) / 2
 
-    n_top = max(1, round(len(low_vol_pool) * top_pct))
+    def n_pick(pool: pd.Index) -> int:
+        if n_holdings is not None:
+            return min(n_holdings, len(pool))
+        return max(1, round(len(pool) * top_pct))
+
+    n_top = n_pick(low_vol_pool)
     conservative = combined_score(low_vol_pool).sort_values(ascending=False, kind="stable").index[:n_top].tolist()
 
     speculative: list[str] = []
     if len(high_vol_pool) > 0:
-        n_bottom = max(1, round(len(high_vol_pool) * top_pct))
+        n_bottom = n_pick(high_vol_pool)
         speculative = combined_score(high_vol_pool).sort_values(ascending=True, kind="stable").index[:n_bottom].tolist()
 
     return conservative, speculative
@@ -71,6 +78,7 @@ def build_portfolio_returns(
     mom_df: pd.DataFrame,
     npy_df: pd.DataFrame | None = None,
     freq: str = config.REBALANCE_FREQ,
+    n_holdings: int | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     """Builds monthly equal-weight return series for the Conservative and
     Speculative portfolios, rebalancing at each quarter-end.
@@ -100,7 +108,9 @@ def build_portfolio_returns(
     for i, dt in enumerate(dates):
         if dt in rebalance_dates and dt in vol_df.index and dt in mom_df.index:
             npy_row = npy_df.loc[dt] if npy_df is not None else None
-            conservative_tickers, speculative_tickers = select_portfolios(vol_df.loc[dt], mom_df.loc[dt], npy_row)
+            conservative_tickers, speculative_tickers = select_portfolios(
+                vol_df.loc[dt], mom_df.loc[dt], npy_row, n_holdings=n_holdings
+            )
             holdings[dt] = {"conservative": conservative_tickers, "speculative": speculative_tickers}
 
         if i + 1 >= len(dates):
